@@ -1,0 +1,15 @@
+<?xml version='1.0' encoding='utf-8'?>
+<widget id="com.harmonicnw.woe.BieberBucket" version="0.0.1" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0" xmlns:gap="http://phonegap.com/ns/1.0">
+    <name>BieberBucket</name>
+    <description>
+        Help Justin hit the bucket!
+    </description>
+    <author email="contact@whiteofeye.com" href="http://www.whiteofeye.com">
+        White of Eye
+    </author>
+    <access origin="*" />
+    <preference name="fullscreen" value="true" />
+    <preference name="webviewbounce" value="true" />
+    
+    <feature name="http://api.phonegap.com/1.0/notification"/>
+</widget>

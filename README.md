@@ -1,4 +1,3 @@
-bieberbucket
-============
+=== Bieber Bucket!
 
-Bieber Bucket!
+== version 0.0.1
