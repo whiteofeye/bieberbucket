@@ -22,32 +22,55 @@ body {
 	position: absolute;
 	}
 	
-#dashboard {
+.dashboard {
 	background: rgba(30,30,30,0.2);
+	border-radius: 5px;
 	color: #000;
 	font-size: 16px;
-	margin: 20px 0 0 20px;
-	padding: 15px;
+	height: 3.8em;
+	padding: 15px 15px 0 15px;
 	position: absolute;
-	width: 40%;
+	top: 20px;
+	width: 30%;
 	}
-#dashboard p {
+.dashboard p {
 	clear: both;
 	float: left;
 	line-height: 1.4em;
 	width: 100%;
 	}
-#dashboard span.key {
+.dashboard span.key {
 	clear: none;
 	float: left;
 	font-weight: bold;
-	width: 40%;
+	width: 50%;
 	}
-#dashboard span.val {
+.dashboard span.val {
 	clear: none;
 	float: left;
 	width: auto;
 	}
+.dashboard .alert {
+	color: #d00;	
+	}
+	
+#dash {
+	right: 20px;
+	}
+#timer {
+	left: 20px;
+	width: 14%;
+	}
+#timer p {
+	font-size: 2em;
+	text-align: center;
+	width: 100%;
+	}
+#timer p span {
+	clear: none;
+	display: inline;
+	float: none;
+}
 	
 #star {
 	height: auto;
