@@ -22,6 +22,15 @@ var app = {
 			setTimeout( arguments.callee, 100 );
 			return;
 		}
+		
+		// init vars
+		var level = 0;
+		var score = 0;
+		var time = 10;
+		var timerInt;
+		var levelObj = $('#level');
+		var scoreObj = $('#score');
+		var timeObj = $('#time');
     
     	// init stage
     	var stage = $("#stage");
@@ -35,18 +44,69 @@ var app = {
     	});
     	
 		var stageAngle = 0.2; // angle of path bucket runs along
+		
+        // bucket obj
+        function bucket( obj ) {
+	    	var bucket = obj;
+	    	var myWidth = stage.width() * 0.5;
+	    	var myHeight;
+	    	
+	    	this.getX = getX;
+	    	this.getY = getY;
+	    	this.getHitCoords = getHitCoords;
+	    	this.reset = reset;
+	    	this.updatePosFromAccel = updatePosFromAccel;
+	    	
+	    	// get x position
+	    	function getX() {
+		    	return parseFloat( bucket.css("left").replace("px","") );
+	    	}
+	    	// get y position
+	    	function getY() {
+		    	return parseFloat( bucket.css("top").replace("px","") );
+	    	}
+	    	// get position relative to stage of where current bucket hit area is
+	    	function getHitCoords() {
+		    	return {
+			    	"top" : getY() + (myHeight * 0.6),
+			    	"right" : getX() + (myWidth * 0.9),
+			    	"bottom" : getY() + (myHeight * 0.9),
+			    	"left" : getX() + (myWidth * 0.1),
+		    	}
+	    	}
+	    	// reset bucket to original position
+	    	function reset() {
+			    bucket.width( myWidth );
+		        bucket.css({
+			        'left' : ( ( stage.width() - bucket.width() ) * 0.5 ) + "px",
+			        'top' : ( ( stage.height() - bucket.height() ) * 1.3 ) + "px"
+		        });
+		        if (!myHeight) {
+			    	myHeight = bucket.height();  
+		        }
+	    	}
+	    	// set new bucket position from accelerometer reading
+			function updatePosFromAccel( a ) {
+				var bucketNewX = getX() + ( a.x * Math.cos( stageAngle ) * 30 );
+				var bucketNewY = getY() + ( a.x * Math.sin( stageAngle ) * 30 );
+				
+				bucket.css({
+					"left" : bucketNewX + "px",
+					"top" : bucketNewY + "px",
+				});
+				//console.log( "updatePosFromAccel: a.x = " + a.x );
+			}
+        }
     
 		// init bucket obj
-        var bucket = $("#bucket");
-        bucket.width( stage.width() * 0.5 );
-        bucket.css({
-	        'left' : ( ( stage.width() - bucket.width() ) * 0.5 ) + "px",
-	        'top' : ( ( stage.height() - bucket.height() ) * 1.3 ) + "px"
-        });
+        var myBucket = new bucket( $("#bucket") );
+        myBucket.reset();
         
         // make star obj
         function star( obj ) {
-       		var star = obj;
+        	var star = obj;
+       		var stopBouncingNow = false;
+       		
 	        star.width( stage.width() * 0.5726 );
 	        star.css({
 		       'left' : ( stage.width() * .2 ) + "px",
@@ -55,6 +115,7 @@ var app = {
 	        
 	        // declare methods
 	        this.bounce = bounce;
+	        this.stop = stop;
 	        this.getX = getX;
 	        this.getY = getY;
 	        this.getDongPos = getDongPos;
@@ -76,7 +137,7 @@ var app = {
 	        // return starting point (on stage) of pee origin
 	        function getDongPos() {
 	        	//console.log( "getDongPos: star height = " + star.height() + ", getY = " + getY());
-	        	console.log( "getDongPos: star width = " + star.width() + ", getX = " + getX());
+	        	//console.log( "getDongPos: star width = " + star.width() + ", getX = " + getX());
 		        return {
 			        'x' : ( star.width() * 0.5 ) + getX(),
 			        'y' : ( star.height() * 0.7 ) + getY()
@@ -85,6 +146,10 @@ var app = {
 	        
 	        // make star bounce
 	        function bounce() {
+	        	if (stopBouncingNow) {
+		        	stopBouncingNow = false;
+		        	return;
+	        	}
 				var a = ( Math.random() - 0.5 ) * 40;
 	        
 	        	var starX = parseFloat( star.css("left").replace("px","") );
@@ -107,6 +172,10 @@ var app = {
 				}, 500, "swing", arguments.callee)
 				;
 	        }
+	        
+	        function stop() {
+		        stopBouncingNow = true;
+	        }
 	    }
 	    
 	    // init pop star obj
@@ -118,31 +187,19 @@ var app = {
 	    var watchID = navigator.accelerometer.watchAcceleration(accelGo, accelOnError, { frequency: accelCheckInt });
 		
 		// onError: Failed to get the acceleration
-		//
 		function accelOnError() {
 		    alert('Accelerometer Error!');
 		    navigator.accelerometer.clearWatch(watchID);
 		}
 		
-		// init accelator bucket control
+		// 
 		function accelGo( a ) {
-			var bucketX = parseFloat( bucket.css("left").replace("px","") );
-			var bucketY = parseFloat( bucket.css("top").replace("px","") );
-			
-			var bucketNewX = bucketX + ( a.x * Math.cos( stageAngle ) * 30 );
-			var bucketNewY = bucketY + ( a.x * Math.sin( stageAngle ) * 30 );
-			
-			bucket.css({
-				"left" : bucketNewX + "px",
-				"top" : bucketNewY + "px",
-			});
-			//console.log( "accelGo: a.x = " + a.x );
+			myBucket.updatePosFromAccel( a );
 		}
 		
 		// init drops
-		var dropsInt = setInterval( drop, 200 );
-		
 		var dropCount = 0;
+		var dropsInt = setInterval( drop, 200 );
 		function drop() {
 			var dongPos = myStar.getDongPos();
 			
@@ -161,9 +218,48 @@ var app = {
 			dropObj.animate({
 				'top' : stage.height() + "px"
 			}, 1000,'easeInCubic', function() {
-				//console.log('remove me');
+				updateScore(-10);
 				$(this).remove();
 			});
+		}
+		/* dropsArr = []... */
+		
+		// score and remove drops in bucket hit zone
+		function scoreDropsInBucket() {
+			console.log( "scoreDropsInBucket: bucket hit zone = ");
+			console.dir( myBucket.getHitCoords() );
+		}
+		
+		// update score variable and display
+		function updateScore(n) {
+			score += n;
+			scoreObj.text( score );
+		}
+		
+		// init timer - timer checks for object interactions
+		initTimer();
+		
+		function initTimer() {
+			time = 5;
+			level++;
+			timerInt = setInterval( tick, 1000 );
+			timeObj.text(time);
+		}
+		function tick() {
+			time--;
+			scoreDropsInBucket();
+			if (time <= 0 ) {
+				levelEnd();
+			} else if (time <= 5) {
+				timeObj.addClass('alert');
+			} else {
+				timeObj.removeClass('alert');
+			}
+			timeObj.text(time);
+		}
+		function levelEnd() {
+			myStar.stop();
+			clearInterval(timerInt);
 		}
 
     }
