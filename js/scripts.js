@@ -26,7 +26,7 @@ var app = {
 		// init vars
 		var level = 0;
 		var score = 0;
-		var time = 10;
+		var levelTime = 15;
 		var timerInt;
 		var levelObj = $('#level');
 		var scoreObj = $('#score');
@@ -35,7 +35,6 @@ var app = {
     	// init stage
     	var stage = $("#stage");
     	var bgImg = $("#bgImg");
-    	//console.log("bgImg height = " + bgImg.height());
     	stage.height( stage.width() * bgImg.height() / bgImg.width() );
     	
     	// center stage vertically
@@ -47,9 +46,14 @@ var app = {
 		
         // bucket obj
         function bucket( obj ) {
-	    	var bucket = obj;
+            var acceleration = 0;
+            var accelMultiplier = 2.8;
+            var accelMax = 12;
 	    	var myWidth = stage.width() * 0.5;
 	    	var myHeight;
+	    	var obj = obj;
+            var stageHeight = stage.height();
+            var stageWidth = stage.width();
 	    	
 	    	this.getX = getX;
 	    	this.getY = getY;
@@ -59,11 +63,11 @@ var app = {
 	    	
 	    	// get x position
 	    	function getX() {
-		    	return parseFloat( bucket.css("left").replace("px","") );
+		    	return parseFloat( obj.css("left").replace("px","") );
 	    	}
 	    	// get y position
 	    	function getY() {
-		    	return parseFloat( bucket.css("top").replace("px","") );
+		    	return parseFloat( obj.css("top").replace("px","") );
 	    	}
 	    	// get position relative to stage of where current bucket hit area is
 	    	function getHitCoords() {
@@ -76,21 +80,37 @@ var app = {
 	    	}
 	    	// reset bucket to original position
 	    	function reset() {
-			    bucket.width( myWidth );
-		        bucket.css({
-			        'left' : ( ( stage.width() - bucket.width() ) * 0.5 ) + "px",
-			        'top' : ( ( stage.height() - bucket.height() ) * 1.3 ) + "px"
-		        });
+			    obj.width( myWidth );
 		        if (!myHeight) {
-			    	myHeight = bucket.height();  
+			    	myHeight = obj.height();
 		        }
+		        obj.css({
+			        'left' : ( ( stageWidth - myWidth ) * 0.5 ) + "px",
+			        'top' : ( ( stageHeight - myHeight ) * 1.3 ) + "px"
+		        });
 	    	}
 	    	// set new bucket position from accelerometer reading
 			function updatePosFromAccel( a ) {
-				var bucketNewX = getX() + ( a.x * Math.cos( stageAngle ) * 30 );
-				var bucketNewY = getY() + ( a.x * Math.sin( stageAngle ) * 30 );
+                acceleration += a.x;
+                
+                // keep acceleration within limits
+                if ( acceleration > accelMax ) {
+                    acceleration = accelMax;
+                } else if ( acceleration < -accelMax ) {
+                    acceleration = -accelMax;
+                }
+                
+				var bucketNewX = getX() - ( Math.round( acceleration * Math.cos( stageAngle ) * accelMultiplier ) );
+                var bucketNewY = getY() - ( Math.round( acceleration * Math.sin( stageAngle ) * accelMultiplier ) );
+                
+                // test to see if bucket is off screen
+                if ( bucketNewX < -myWidth || bucketNewX > stage.width() ) {
+                    bucketNewX = getX();
+                    bucketNewY = getY();
+                    console.log('bucket is off screen: x = ' + getX());
+                }
 				
-				bucket.css({
+				obj.css({
 					"left" : bucketNewX + "px",
 					"top" : bucketNewY + "px",
 				});
@@ -136,8 +156,6 @@ var app = {
 	        
 	        // return starting point (on stage) of pee origin
 	        function getDongPos() {
-	        	//console.log( "getDongPos: star height = " + star.height() + ", getY = " + getY());
-	        	//console.log( "getDongPos: star width = " + star.width() + ", getX = " + getX());
 		        return {
 			        'x' : ( star.width() * 0.5 ) + getX(),
 			        'y' : ( star.height() * 0.7 ) + getY()
@@ -183,7 +201,7 @@ var app = {
         myStar.bounce();
 	    
 	    // start accelerometer checker
-	    var accelCheckInt = 200;
+	    var accelCheckInt = 100;
 	    var watchID = navigator.accelerometer.watchAcceleration(accelGo, accelOnError, { frequency: accelCheckInt });
 		
 		// onError: Failed to get the acceleration
@@ -202,7 +220,6 @@ var app = {
 		var dropCount = 0;
 		var dropsInt = setInterval( function() {
 			dropsArr.push( new drop( dropCount ) );
-			console.log( "creating new drop " + dropCount );
 			dropCount++;
 			updateDrops();
 		}, 200 );
@@ -267,7 +284,7 @@ var app = {
 				var dropX = getX();
 				var dropY = getY();
 				
-				console.log("isInCoords: x = " + getX() + ", y = " + getY() + ", coords = " + coords.top + ", " + coords.right + ", " + coords.bottom + ", " + coords.left );
+				//console.log("isInCoords: x = " + getX() + ", y = " + getY() + ", coords = " + coords.top + ", " + coords.right + ", " + coords.bottom + ", " + coords.left );
 				
 				// test if parameter is valid
 				if (!coords || !coords.hasOwnProperty("top") || !coords.hasOwnProperty("right") || !coords.hasOwnProperty("bottom") || !coords.hasOwnProperty("left") ) {
@@ -285,9 +302,6 @@ var app = {
 		
 		// score and remove drops in bucket hit zone
 		function updateDrops() {
-			//console.log( "scoreDropsInBucket: bucket hit zone = ");
-			//console.dir( myBucket.getHitCoords() );
-			
 			var updatedDropsArr = [];
 			// cycle through drops, test active (undestroyed) drops
 			for ( var i = 0; i < dropsArr.length; i++ ) {
@@ -296,11 +310,9 @@ var app = {
 						// if drop is in hit zone, score it and destroy it
 						updateScore(20);
 						dropsArr[i].destroy();
-						console.log("drop " + dropsArr[i].getDropNum() + " HITTTTTT!!!!!");
 					} else {
 						// if drop is not in hit zone, keep it in the active drops array
 						updatedDropsArr.push( dropsArr[i] );
-						console.log("drop " + dropsArr[i].getDropNum() + " is active but not in hit zone! ");
 					}
 				}
 			}
@@ -318,7 +330,7 @@ var app = {
 		initTimer();
 		
 		function initTimer() {
-			time = 5;
+			time = levelTime;
 			level++;
 			timerInt = setInterval( tick, 1000 );
 			timeObj.text(time);
