@@ -68,7 +68,7 @@ var app = {
 	    	// get position relative to stage of where current bucket hit area is
 	    	function getHitCoords() {
 		    	return {
-			    	"top" : getY() + (myHeight * 0.6),
+			    	"top" : getY() + (myHeight * 0.45),
 			    	"right" : getX() + (myWidth * 0.9),
 			    	"bottom" : getY() + (myHeight * 0.9),
 			    	"left" : getX() + (myWidth * 0.1),
@@ -198,36 +198,114 @@ var app = {
 		}
 		
 		// init drops
+		var dropsArr = [];
 		var dropCount = 0;
-		var dropsInt = setInterval( drop, 200 );
-		function drop() {
-			var dongPos = myStar.getDongPos();
-			
-			// make drop
-			var dropObj = $("<div class='drop' id='drop" + dropCount + "' />");
-			dropObj.css({
-				'left' : dongPos.x + "px",
-				'top' : dongPos.y + "px",
-				'height' : ( stage.width() * 0.01 ) + "px",
-				'width' : ( stage.width() * 0.01 ) + "px"
-			});
-			$("#stage").append(dropObj);
-			
+		var dropsInt = setInterval( function() {
+			dropsArr.push( new drop( dropCount ) );
+			console.log( "creating new drop " + dropCount );
 			dropCount++;
+			updateDrops();
+		}, 200 );
+		
+		function drop( n ) {
+			var dongPos = myStar.getDongPos();
+			var dropNum = n;
+			var obj = $("<div class='drop' id='drop" + dropNum + "' />");
+			var active = true;
 			
-			dropObj.animate({
-				'top' : stage.height() + "px"
-			}, 1000,'easeInCubic', function() {
-				updateScore(-10);
-				$(this).remove();
-			});
+			this.destroy = destroy;
+			this.initDrop = initDrop;
+			this.isActive = isActive;
+			this.isInCoords = isInCoords;
+			this.getX = getX;
+			this.getY = getY;
+			this.getDropNum = getDropNum;
+			
+			initDrop();
+			
+			// remove drop
+			function destroy() {
+				obj.remove();
+				active = false;
+			}
+			// get drop number
+	    	function getDropNum() {
+		    	return dropNum;
+	    	}
+			// get x position
+	    	function getX() {
+		    	return parseFloat( obj.css("left").replace("px","") );
+	    	}
+	    	// get y position
+	    	function getY() {
+		    	return parseFloat( obj.css("top").replace("px","") );
+	    	}
+			// position drop on stage, animate
+			function initDrop() {
+				obj.css({
+					'left' : dongPos.x + "px",
+					'top' : dongPos.y + "px",
+					'height' : ( stage.width() * 0.01 ) + "px",
+					'width' : ( stage.width() * 0.01 ) + "px"
+				});
+				$("#stage").append(obj);
+				
+				obj.animate({
+					'top' : stage.height() + "px"
+				}, 1000,'easeInCubic', function() {
+					updateScore(-10);
+					destroy();
+				});
+			}
+			// test if ddrop is active (undestroyed)
+			function isActive() {
+				return active;
+			}
+			// test if drop is within given coordinates
+			function isInCoords( coords ) {
+				// get current drop position
+				var dropX = getX();
+				var dropY = getY();
+				
+				console.log("isInCoords: x = " + getX() + ", y = " + getY() + ", coords = " + coords.top + ", " + coords.right + ", " + coords.bottom + ", " + coords.left );
+				
+				// test if parameter is valid
+				if (!coords || !coords.hasOwnProperty("top") || !coords.hasOwnProperty("right") || !coords.hasOwnProperty("bottom") || !coords.hasOwnProperty("left") ) {
+					return false;
+				}
+				// test drop position versus coordinates
+				if ( dropY > coords.top && dropY < coords.bottom && dropX > coords.left && dropX < coords.right ) {
+					return true;
+				} else {
+					return false;
+				}
+			}
 		}
-		/* dropsArr = []... */
+		
 		
 		// score and remove drops in bucket hit zone
-		function scoreDropsInBucket() {
-			console.log( "scoreDropsInBucket: bucket hit zone = ");
-			console.dir( myBucket.getHitCoords() );
+		function updateDrops() {
+			//console.log( "scoreDropsInBucket: bucket hit zone = ");
+			//console.dir( myBucket.getHitCoords() );
+			
+			var updatedDropsArr = [];
+			// cycle through drops, test active (undestroyed) drops
+			for ( var i = 0; i < dropsArr.length; i++ ) {
+				if ( dropsArr[i].isActive ) {
+					if ( dropsArr[i].isInCoords( myBucket.getHitCoords() ) ) {
+						// if drop is in hit zone, score it and destroy it
+						updateScore(20);
+						dropsArr[i].destroy();
+						console.log("drop " + dropsArr[i].getDropNum() + " HITTTTTT!!!!!");
+					} else {
+						// if drop is not in hit zone, keep it in the active drops array
+						updatedDropsArr.push( dropsArr[i] );
+						console.log("drop " + dropsArr[i].getDropNum() + " is active but not in hit zone! ");
+					}
+				}
+			}
+			// update drops array with only active (undestroyed) drops
+			dropsArr = updatedDropsArr;
 		}
 		
 		// update score variable and display
@@ -247,7 +325,6 @@ var app = {
 		}
 		function tick() {
 			time--;
-			scoreDropsInBucket();
 			if (time <= 0 ) {
 				levelEnd();
 			} else if (time <= 5) {
@@ -260,6 +337,7 @@ var app = {
 		function levelEnd() {
 			myStar.stop();
 			clearInterval(timerInt);
+			clearInterval(dropsInt);
 		}
 
     }
