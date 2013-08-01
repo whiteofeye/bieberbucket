@@ -24,27 +24,76 @@ var app = {
 		}
 		
 		// init vars
-		var level = 0;
-		var score = 0;
-		var levelTime = 15;
-		var timerInt;
-		var levelObj = $('#level');
-		var scoreObj = $('#score');
-		var timeObj = $('#time');
-    
-    	// init stage
-    	var stage = $("#stage");
     	var bgImg = $("#bgImg");
-    	stage.height( stage.width() * bgImg.height() / bgImg.width() );
+    	var bgImgAspectRatio = bgImg.width() / bgImg.height();
+		var dropsArr = [];
+		var dropCount = 0;
+		var dropsInt;
+		var level = 0;
+		var levelObj = $('#level');
+		var levelTime = 15;
+		var score = 0;
+		var scoreObj = $('#score');
+    	var stage = $("#stage");
+    	var stageAngle = 0.2; // angle of path bucket runs along
+		var timeObj = $('#time');
+		var timerInt;
     	
-    	// center stage vertically
-    	stage.css({
-	    	'margin-top' : ( ($(document).height() - stage.height()) * 0.5 ) + "px"
-    	});
+    	// init stage
+    	initStage();
+	    
+	    // init pop star obj
+        var myStar = new star( $("#star") );
+        myStar.bounce();
     	
-		var stageAngle = 0.2; // angle of path bucket runs along
-		
-        // bucket obj
+    	// initDrops
+		initDrops();
+    
+		// init bucket obj
+        var myBucket = new bucket( $("#bucket") );
+        myBucket.reset();
+	    
+	    // start accelerometer checker
+	    var accelCheckInt = 100;
+	    var watchID = navigator.accelerometer.watchAcceleration(accelGo, accelOnError, { frequency: accelCheckInt });
+	    			
+		// init timer - timer checks for object interactions
+		initTimer();
+    	
+    	// size and position stage
+    	function initStage() {
+    		console.log( "initStage: bgImgAspectRatio = " + bgImgAspectRatio + ", document ratio = " + $(document).width() / $(document).height() );
+    		if ( ( $(document).width() / $(document).height() ) > bgImgAspectRatio ) {
+    		
+    			// screen is wider than stage and we'll have horizontal margins
+    			stage.height( $(document).height() );
+    			stage.width( stage.height() * bgImgAspectRatio );
+    			
+    			// center stage horizontally
+		    	stage.css({
+			    	'margin-left' : ( ($(document).width() - stage.width()) * 0.5 ) + "px"
+		    	});
+		    	
+    		} else {
+    		
+    			// screen is taller than stage and we'll have vertical margins
+    			stage.width( $(document).width() );
+    			stage.height( stage.width() / bgImgAspectRatio );
+    			
+    			// center stage vertically
+		    	stage.css({
+			    	'margin-top' : ( ($(document).width() - stage.width()) * 0.5 ) + "px"
+		    	});
+    		}
+    	
+	    	stage.height( stage.width() * bgImg.height() / bgImg.width() );
+	    	
+	    	// center stage vertically
+	    	stage.css({
+		    	'margin-top' : ( ($(document).height() - stage.height()) * 0.5 ) + "px"
+	    	});
+    	}
+		// make bucket obj
         function bucket( obj ) {
             var acceleration = 0;
             var accelMultiplier = 2.8;
@@ -72,8 +121,8 @@ var app = {
 	    	// get position relative to stage of where current bucket hit area is
 	    	function getHitCoords() {
 		    	return {
-			    	"top" : getY() + (myHeight * 0.45),
-			    	"right" : getX() + (myWidth * 0.9),
+			    	"top" : getY() + (myHeight * 0.55),
+			    	"right" : getX() + (myWidth * 0.7),
 			    	"bottom" : getY() + (myHeight * 0.9),
 			    	"left" : getX() + (myWidth * 0.1),
 		    	}
@@ -100,14 +149,14 @@ var app = {
                     acceleration = -accelMax;
                 }
                 
-				var bucketNewX = getX() - ( Math.round( acceleration * Math.cos( stageAngle ) * accelMultiplier ) );
-                var bucketNewY = getY() - ( Math.round( acceleration * Math.sin( stageAngle ) * accelMultiplier ) );
+				var bucketNewX = Math.round( getX() - ( acceleration * Math.cos( stageAngle ) * accelMultiplier ) );
+                var bucketNewY = Math.round( getY() - ( acceleration * Math.sin( stageAngle ) * accelMultiplier ) );
                 
                 // test to see if bucket is off screen
                 if ( bucketNewX < -myWidth || bucketNewX > stage.width() ) {
                     bucketNewX = getX();
                     bucketNewY = getY();
-                    console.log('bucket is off screen: x = ' + getX());
+                    //console.log('bucket is off screen: x = ' + getX());
                 }
 				
 				obj.css({
@@ -117,11 +166,6 @@ var app = {
 				//console.log( "updatePosFromAccel: a.x = " + a.x );
 			}
         }
-    
-		// init bucket obj
-        var myBucket = new bucket( $("#bucket") );
-        myBucket.reset();
-        
         // make star obj
         function star( obj ) {
         	var star = obj;
@@ -195,14 +239,6 @@ var app = {
 		        stopBouncingNow = true;
 	        }
 	    }
-	    
-	    // init pop star obj
-        var myStar = new star( $("#star") );
-        myStar.bounce();
-	    
-	    // start accelerometer checker
-	    var accelCheckInt = 100;
-	    var watchID = navigator.accelerometer.watchAcceleration(accelGo, accelOnError, { frequency: accelCheckInt });
 		
 		// onError: Failed to get the acceleration
 		function accelOnError() {
@@ -216,14 +252,15 @@ var app = {
 		}
 		
 		// init drops
-		var dropsArr = [];
-		var dropCount = 0;
-		var dropsInt = setInterval( function() {
-			dropsArr.push( new drop( dropCount ) );
-			dropCount++;
-			updateDrops();
-		}, 200 );
+		function initDrops() {
+			dropsInt = setInterval( function() {
+				dropsArr.push( new drop( dropCount ) );
+				dropCount++;
+				updateDrops();
+			}, 200 );
+		}
 		
+		// create new drop
 		function drop( n ) {
 			var dongPos = myStar.getDongPos();
 			var dropNum = n;
@@ -262,8 +299,8 @@ var app = {
 				obj.css({
 					'left' : dongPos.x + "px",
 					'top' : dongPos.y + "px",
-					'height' : ( stage.width() * 0.01 ) + "px",
-					'width' : ( stage.width() * 0.01 ) + "px"
+					'height' : Math.round( stage.width() * 0.02 ) + "px",
+					'width' : Math.round( stage.width() * 0.02 ) + "px"
 				});
 				$("#stage").append(obj);
 				
@@ -298,8 +335,6 @@ var app = {
 				}
 			}
 		}
-		
-		
 		// score and remove drops in bucket hit zone
 		function updateDrops() {
 			var updatedDropsArr = [];
@@ -325,16 +360,14 @@ var app = {
 			score += n;
 			scoreObj.text( score );
 		}
-		
-		// init timer - timer checks for object interactions
-		initTimer();
-		
+		// make timer go
 		function initTimer() {
 			time = levelTime;
 			level++;
 			timerInt = setInterval( tick, 1000 );
 			timeObj.text(time);
 		}
+		// timer-based events
 		function tick() {
 			time--;
 			if (time <= 0 ) {
@@ -346,6 +379,7 @@ var app = {
 			}
 			timeObj.text(time);
 		}
+		// end level
 		function levelEnd() {
 			myStar.stop();
 			clearInterval(timerInt);
